@@ -1,27 +1,28 @@
 # import the necessary packages
-from sklearn.preprocessing import LabelEncoder
-# DEPRECATED for model_selection: from sklearn.cross_validation import train_test_split
+# from sklearn.preprocessing import LabelEncoder
 from keras.models import Sequential
 from keras.layers import Activation
 from keras.optimizers import SGD
 from keras.layers import Convolution2D, MaxPooling2D, Dense, Flatten, Dropout
 from keras.utils import np_utils
-from keras.preprocessing.image import ImageDataGenerator
+# from keras.preprocessing.image import ImageDataGenerator
 from imutils import paths
 import numpy as np
-import argparse
+# import argparse
 import cv2
 import os
+
+from dataprep import prep_data
 
 # fix random seed for reproducibility
 seed = 7
 np.random.seed(seed)
 
 # construct the argument parse and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-d", "--dataset", required=True,
-	help="path to input dataset")
-args = vars(ap.parse_args())
+# ap = argparse.ArgumentParser()
+# ap.add_argument("-d", "--dataset", required=True,
+	# help="path to input dataset")
+# args = vars(ap.parse_args())
  
 # define the architecture of the network
 model = Sequential()
@@ -40,27 +41,18 @@ model.add(Dense(64, activation="relu"))
 model.add(Dropout(0.5))
 model.add(Dense(1, activation="sigmoid"))
 
-train_datagen = ImageDataGenerator(
-        rescale=1.0/255,
-        horizontal_flip=True)
+config=[
+    ('data/clear', 50),
+    ('data/nonempty', 50)
+    ]
 
-train_generator = train_datagen.flow_from_directory(
-        args["dataset"],
-        follow_links=True,
-        target_size=(150,150),
-        color_mode='grayscale',
-        batch_size=32,
-        class_mode='binary')
-
-valid_datagen = ImageDataGenerator(rescale=1.0/255)
-
-valid_generator = valid_datagen.flow_from_directory(
-        args["dataset"],
-        follow_links=True,
-        target_size=(150,150),
-        color_mode='grayscale',
-        batch_size=32,
-        class_mode='binary')
+(train_gen, tests) = prep_data(config,
+                               (150, 150),
+                               0.1,
+                               32,
+                               rescale=1.0/255,
+                               horizontal_flip=True
+                               )
 
 # partition the data into training and testing splits, using 75%
 # of the data for training and the remaining 25% for testing
@@ -78,11 +70,10 @@ model.compile(
 print(model.summary())
 
 model.fit_generator(
-        train_generator,
-        samples_per_epoch=2048,
-        nb_epoch=50)
-        # validation_data=validation_generator,
-        # nb_val_samples=800)
+        train_gen,
+        samples_per_epoch=2000,
+        nb_epoch=50,
+        validation_data=tests)
 
 # show the accuracy on the testing set
 # print("[INFO] evaluating on testing set...")
