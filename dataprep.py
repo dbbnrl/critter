@@ -46,7 +46,10 @@ def prep_data(train_gen, test_gen, config, classes, test_size, **kwargs):
                                                     classes=classes,
                                                     dir_class=cls,
                                                     follow_links=True)
-                (Xtrain, Xtest, Ytrain, Ytest) = train_test_split(X, Y, test_size=test_size)
+                if test_size:
+                        (Xtrain, Xtest, Ytrain, Ytest) = train_test_split(X, Y, test_size=test_size)
+                else:
+                        (Xtrain, Xtest, Ytrain, Ytest) = (X, X, Y, Y)
                 train_its.append(FileListIterator(train_gen, Xtrain, Ytrain, nb_class,
                                                   dim_ordering=train_gen.dim_ordering,
                                                   **kwargs))
