@@ -44,9 +44,16 @@ ap.add_argument("-l", "--load-model", action='store_true')
 ap.add_argument("-t", "--train", action='store_true')
 ap.add_argument("-st", "--show-training", action='store_true')
 ap.add_argument("-sv", "--show-validation", action='store_true')
+ap.add_argument("-sm", "--show-mispredict", action='store_true')
 ap.add_argument("-c", "--clock-prediction", action='store_true')
+ap.add_argument("-p", "--predict")
 args = ap.parse_args()
  
+if args.show_mispredict:
+    args.show_validation = True
+
+load_data = args.train or args.show_training or args.show_validation or args.show_mispredict or args.clock_prediction
+
 if args.load_model:
     model = load_model(model_file)
 else:
@@ -84,8 +91,8 @@ def preprocess(x):
     #     x = 255.0 - x
     x -= np.mean(x)
     # x /= np.std(x)
-    if np.random.random() < 0.5:
-        x *= -1.
+    # if np.random.random() < 0.5:
+    #     x *= -1.
 
     # for display only:
     # x /= 2.5
@@ -104,11 +111,12 @@ imgen = ImageDataGenerator(
                            preprocessing_function=preprocess,
                            horizontal_flip=True)
 
-(trainIt, testIt) = prep_data(imgen, imgen, config, classes, 0.2,
-                              target_size=img_size,
-                              color_mode='grayscale',
-                              class_mode='binary',
-                              batch_size=32)
+if load_data:
+    (trainIt, testIt) = prep_data(imgen, imgen, config, classes, 0.2,
+                                target_size=img_size,
+                                color_mode='grayscale',
+                                class_mode='binary',
+                                batch_size=32)
 
 def show_training_images(gen, validate=False):
     pyplot.ion()
@@ -120,30 +128,39 @@ def show_training_images(gen, validate=False):
     norm=matplotlib.colors.Normalize()
     # norm=matplotlib.colors.NoNorm()
     while True:
+        got_mispredict = False
         for i in range(0, 9):
         # for i in range(0, 8):
             if validate:
                 (x, y, yp) = next(gen)
+                cp = (yp < 0.5)
             else:
                 (x, y) = next(gen)
+            c = (y < 0.5)
             axs[i].imshow(np.squeeze(x), cmap='gray', norm=norm)
-            if (y < 0.5):
+            if c:
                 title = "Match"
+                color="green"
             else:
                 title = "No match"
+                color="black"
+            score = int(100*(1.0-y))
             # title=str(np.mean(x))[:4]
-            if validate and (y != yp):
-                if (yp < 0.5):
-                    axs[i].set_title("False POS", color="red")
-                else:
-                    axs[i].set_title("False NEG", color="red")
-            else:
-                axs[i].set_title(title, color="black")
+            if validate:
+                score = int(100*(1.0-yp))
+                if (c != cp):
+                    got_mispredict = True
+                    color = "red"
+                    if cp:
+                        title = "False POS"
+                    else:
+                        title = "False NEG"
+            title += " [" +str(score) + "]"
+            axs[i].set_title(title, color=color)
         # x = preprocess(x)
         # axs[8].imshow(np.squeeze(x), cmap='gray', norm=norm)
-
-
-        pyplot.waitforbuttonpress()
+        if got_mispredict or not args.show_mispredict:
+            pyplot.waitforbuttonpress()
 
 if args.show_training:
     show_training_images(Unbatch(trainIt))
@@ -164,7 +181,7 @@ if args.train:
             callbacks=[ModelCheckpoint(model_file, save_best_only=True)]
                        # TensorBoard(histogram_freq=1, write_graph=False, write_images=True)]
             )
-    save_model(model, model_file)
+    # save_model(model, model_file)
 
 # def accum_data(iter, nb_elem):
 #     Xs = []
@@ -184,9 +201,12 @@ class Comparator(object):
     def __iter__(self):
         return self
     def __next__(self):
-        (X, Y) = next(self.generator)
-        Yp = self.model.predict_classes(X)
-        return (X, Y, Yp)
+        tup = next(self.generator)
+        if not isinstance(tup, tuple):
+            tup = (tup,)
+        X = tup[0]
+        Yp = self.model.predict_proba(X)
+        return tup + (Yp,)
 
 if args.show_validation:
     [loss, acc] = model.evaluate_generator(testIt, 200)
@@ -201,6 +221,16 @@ if args.clock_prediction:
         x, y = next(gen)
         Xs.append(x)
     model.predict_classes(np.array(Xs))
+
+if args.predict:
+    X = ImageDataGenerator(preprocessing_function=preprocess).flow_from_directory(
+            args.predict,
+            color_mode='grayscale',
+            target_size=img_size,
+            shuffle=False,
+            classes=['.'],
+            class_mode=None)
+    show_training_images(Unbatch(Comparator(model, X)))
 
 # show the accuracy on the testing set
 # print("[INFO] evaluating on testing set...")
