@@ -185,12 +185,14 @@ def preprocess(x):
     # x.clip(-2.0, 2.0)
 
     x -= 127.5
-    if np.random.random() < 0.5:
-        x /= 8.
-    else:
-        x /= -8.
+    x /= 8.
 
     return x
+
+def preprocess_train(x):
+    x = preprocess(x)
+    if np.random.random() < 0.5:
+        x *= -1.
 
 imgen = ImageDataGenerator(
                            # rescale=1.0/255,
@@ -200,7 +202,7 @@ imgen = ImageDataGenerator(
                            height_shift_range=0.07,
                            # shear_range=0.,
                            # zoom_range=0.2,
-                           preprocessing_function=preprocess,
+                           preprocessing_function=preprocess_train,
                            horizontal_flip=True)
 
 if load_data:
