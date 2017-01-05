@@ -10,13 +10,13 @@ from keras.utils import np_utils
 from keras.preprocessing.image import ImageDataGenerator, Unbatch
 from keras.backend.tensorflow_backend import _to_tensor, _EPSILON
 from keras import backend as K
-from imutils import paths
+# from imutils import paths
 import numpy as np
 import matplotlib
 from matplotlib import pyplot
 from scipy.misc import toimage
 import argparse
-import cv2
+# import cv2
 import os
 import time
 import tensorflow as tf
@@ -61,7 +61,7 @@ ap.add_argument("-m", "--mismatch", action='store_true')
 ap.add_argument("-c", "--clock", action='store_true')
 ap.add_argument("-e", "--export")
 ap.add_argument("-i", "--import")
-ap.add_argument("-f", "--val-fraction", default=0.1)
+ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 args = ap.parse_args()
  
 load_data = args.train or args.validate
@@ -83,35 +83,86 @@ def weighted_binary_crossentropy(output, target, pos_weight, from_logits=False):
 def my_loss_fn(y_true, y_pred):
     return K.mean(weighted_binary_crossentropy(y_pred, y_true, pos_weight), axis=-1)
 
+def conv(model, layers, dim=3, **kwargs):
+    model.add(Convolution2D(layers, dim, dim,
+                            activation="relu",
+                            border_mode="same",
+                            init="he_normal",
+                            **kwargs))
+
+def pool(model, dim=2, **kwargs):
+    model.add(MaxPooling2D(pool_size=(dim, dim),
+                           **kwargs))
+
+def flatten(model, **kwargs):
+    model.add(Flatten(**kwargs))
+
+def dense(model, layers, **kwargs):
+    model.add(Dense(layers,
+                    activation="relu",
+                    init='he_normal',
+                    **kwargs))
+
+def finaldense(model, **kwargs):
+    model.add(Dense(1,
+                    activation="sigmoid",
+                    init='he_normal',
+                    **kwargs))
+
+def dropout(model, pct, **kwargs):
+    model.add(Dropout(pct, **kwargs))
+
+def bottleneck(model, layers):
+    conv(model, layers/2, dim=1)
+    conv(model, layers/2)
+    conv(model, layers, dim=1)
+
+def finalavg(model, **kwargs):
+    # model.add(Convolution2D(1, 1, 1, activation='linear', init='he_normal'))
+    # dim = model.output_shape[1]
+    # model.add(AveragePooling2D((dim, dim), strides=(1, 1)))
+    # flatten(model)
+    # model.add(Activation('sigmoid'))
+    model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
+    dim = model.output_shape[1]
+    print('dim is ', dim)
+    model.add(MaxPooling2D((dim, dim)))
+    flatten(model)
+    model.add(Activation('sigmoid'))
+
 if args.load_model:
     model = load_model(model_file, custom_objects={'my_loss_fn':my_loss_fn})
 else:
     # define the architecture of the network
     model = Sequential()
 
-    model.add(Convolution2D(16, 3, 3, activation="relu", border_mode='same', init='he_normal', input_shape=(img_size + (1,))))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # conv(model, 16, input_shape=(img_size+ (1,)))
+    # pool(model)
+    # conv(model, 16)
+    # pool(model)
+    # conv(model, 16)
+    # pool(model)
+    # conv(model, 16)
+    # pool(model)
+    # flatten(model)
+    # dense(model, 16)
+    # finaldense(model)
 
-    model.add(Convolution2D(16, 3, 3, activation="relu", border_mode='same', init='he_normal'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Convolution2D(16, 3, 3, activation="relu", border_mode='same', init='he_normal'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Convolution2D(16, 3, 3, activation="relu", border_mode='same', init='he_normal'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    # model.add(Convolution2D(16, 3, 3, activation="relu", border_mode='same', init='he_normal'))
-    # model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    # w = model.output._keras_shape[2]
-    # model.add(AveragePooling2D(pool_size=(w, w), strides=(1, 1)))
-
-    model.add(Flatten())
-    # model.add(Dropout(0.5))
-    model.add(Dense(16, activation="relu", init='he_normal'))
-    # model.add(Dropout(0.5))
-    model.add(Dense(1, activation="sigmoid", init='he_normal'))
+    conv(model, 16, input_shape=(img_size+ (1,))) # 3x3
+    conv(model, 16, subsample=(2, 2)) # +2=5x5,/2
+    conv(model, 16) # +4=9x9
+    conv(model, 32, subsample=(2, 2)) # +4=13x13,/2
+    conv(model, 32) # +8=21x21
+    conv(model, 32, subsample=(2, 2)) # +8=29x29,/2
+    conv(model, 32) # +16=45x45
+    conv(model, 64, subsample=(2, 2)) # +16=61x61, /2
+    conv(model, 64) # +32=93x93
+    conv(model, 64, subsample=(2, 2)) # +32=125x125, /2
+    conv(model, 64) # +64=189x189
+    conv(model, 64, subsample=(2, 2)) # +64=253x253, /2
+    conv(model, 64) # +128=381x381
+    conv(model, 64, dim=1) # 381x381
+    finalavg(model)
 
     # train the model using SGD
     print("[INFO] compiling model...")
@@ -124,28 +175,29 @@ else:
 def preprocess(x):
     # if np.random.random() < 0.5:
     #     x = 255.0 - x
-    x /= 255.0
-    x -= np.mean(x)
-    x /= np.std(x)
-    x /= 8.0  # For display purposes
-    # x += 0.5
-    # x -= 0.5
-    # x *= 2.0
-    # if np.random.random() < 0.5:
-    #     x *= -1.
+    # x /= 255.0
 
-    # for display only:
-    # x /= 2.5
-    # x += 0.5
+    # x -= np.mean(x)
+    # std = np.std(x)
+    # if np.random.random() < 0.5:
+    #     std *= -1.
+    # x /= std
+    # x.clip(-2.0, 2.0)
+
+    x -= 127.5
+    if np.random.random() < 0.5:
+        x /= 8.
+    else:
+        x /= -8.
 
     return x
 
 imgen = ImageDataGenerator(
                            # rescale=1.0/255,
                            # samplewise_center=True,
-                           rotation_range=5,
-                           width_shift_range=0.1,
-                           height_shift_range=0.1,
+                           rotation_range=3,
+                           width_shift_range=0.12,
+                           height_shift_range=0.07,
                            # shear_range=0.,
                            # zoom_range=0.2,
                            preprocessing_function=preprocess,
@@ -157,6 +209,10 @@ if load_data:
                                 color_mode='grayscale',
                                 class_mode='binary',
                                 batch_size=32)
+
+gsum = 0.
+gvar = 0.
+gcount = 0
 
 def show_images(gen, compare=False, find_mismatch=False):
     first = True
@@ -170,6 +226,7 @@ def show_images(gen, compare=False, find_mismatch=False):
     # norm=matplotlib.colors.Normalize()
     # norm=matplotlib.colors.NoNorm()
     while True:
+        global gsum, gvar, gcount
         got_mismatch = False
         for i in range(0, 9):
         # for i in range(0, 8):
@@ -179,6 +236,21 @@ def show_images(gen, compare=False, find_mismatch=False):
                 (x, y) = next(gen)
                 if first:
                     yp = y
+            scount = 224*224
+            ssum = x.sum()
+            smean = ssum / scount
+            svar = np.var(x)
+            if gcount:
+                gmean = gsum / gcount
+                delta = smean - gmean
+                m_a = gvar*(gcount-1)
+                m_b = svar*(scount-1)
+                M2 = m_a + m_b + delta**2 * gcount * scount / (gcount + scount)
+            else:
+                M2 = ssum
+            gsum += ssum
+            gcount += scount
+            gvar = M2 / (gcount - 1)
             c = (y < 0.5)
             cp = (yp < 0.5)
             first = False
@@ -208,6 +280,7 @@ def show_images(gen, compare=False, find_mismatch=False):
             axs[i].set_title(title, color=color)
         # x = preprocess(x)
         # axs[8].imshow(np.squeeze(x), cmap='gray', norm=norm)
+        print("#={0}, mean={1}, std={2}".format(gcount, gsum/gcount, gvar))
         if got_mismatch or not find_mismatch:
             pyplot.waitforbuttonpress()
 
@@ -286,6 +359,7 @@ if args.train:
             nb_epoch=nb_epoch,
             validation_data=testIt,
             nb_val_samples=100,
+            pickle_safe=True,
             callbacks=[ModelCheckpoint(model_file, save_best_only=True)]
                        # TensorBoard(histogram_freq=1, write_graph=False, write_images=True)]
             )
