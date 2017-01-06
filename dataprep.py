@@ -19,7 +19,7 @@ def preprocess(x):
     # x.clip(-2.0, 2.0)
 
     x -= 127.5
-    x /= 8.
+    x /= 48.
 
     return x
 

@@ -1,5 +1,6 @@
 from matplotlib import pyplot
 import numpy as np
+import math
 
 gsum = 0.
 gvar = 0.
@@ -71,6 +72,6 @@ def show_images(gen, compare=False, find_mismatch=False):
             axs[i].set_title(title, color=color)
         # x = preprocess(x)
         # axs[8].imshow(np.squeeze(x), cmap='gray', norm=norm)
-        print("#={0}, mean={1}, std={2}".format(gcount, gsum/gcount, gvar))
+        print("#={0}, mean={1}, std={2}".format(gcount, gsum/gcount, math.sqrt(gvar)))
         if got_mismatch or not find_mismatch:
             pyplot.waitforbuttonpress()
