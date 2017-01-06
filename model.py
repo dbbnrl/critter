@@ -27,19 +27,20 @@ def weighted_binary_crossentropy(output, target, pos_weight, from_logits=False):
 def my_loss_fn(y_true, y_pred):
     return K.mean(weighted_binary_crossentropy(y_pred, y_true, pos_weight), axis=-1)
 
-def convxy(model, layers, xdim, ydim, **kwargs):
+def convxy(model, layers, xdim, ydim,
+           activation='relu', **kwargs):
     model.add(Convolution2D(layers, xdim, ydim,
-                            activation="relu",
+                            activation=activation,
                             border_mode="same",
                             init="he_normal",
                             **kwargs))
 
 def conv(model, layers, dim=3, **kwargs):
-    convxy(model, layers, dim, dim, **kwargs);
+    convxy(model, layers, dim, dim, **kwargs)
 
 def conv1d(model, layers, dim=3, **kwargs):
-    convxy(model, layers, dim, 1, **kwargs);
-    convxy(model, layers, 1, dim, **kwargs);
+    convxy(model, layers, dim, 1, **kwargs)
+    convxy(model, layers, 1, dim, **kwargs)
 
 def pool(model, dim=2, **kwargs):
     model.add(MaxPooling2D(pool_size=(dim, dim),
@@ -48,9 +49,10 @@ def pool(model, dim=2, **kwargs):
 def flatten(model, **kwargs):
     model.add(Flatten(**kwargs))
 
-def dense(model, layers, **kwargs):
+def dense(model, layers,
+          activation='relu', **kwargs):
     model.add(Dense(layers,
-                    activation="relu",
+                    activation=activation,
                     init='he_normal',
                     **kwargs))
 
@@ -63,20 +65,20 @@ def finaldense(model, **kwargs):
 def dropout(model, pct, **kwargs):
     model.add(Dropout(pct, **kwargs))
 
-def bottleneck(model, layers):
-    conv(model, layers/2, dim=1)
-    conv(model, layers/2)
-    conv(model, layers, dim=1)
+def bottleneck(model, layers, dim=3, **kwargs):
+    conv(model, layers//2, dim=1)
+    conv(model, layers//2, dim=dim)
+    conv(model, layers,   dim=1)
 
 def finalavg(model, **kwargs):
-    model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
+    conv(model, 1, dim=1, activation=None)
     dim = model.output_shape[1]
     model.add(AveragePooling2D((dim, dim)))
     flatten(model)
     model.add(Activation('sigmoid'))
 
 def finalmax(model, **kwargs):
-    model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
+    conv(model, 1, dim=1, activation=None)
     dim = model.output_shape[1]
     model.add(MaxPooling2D((dim, dim)))
     flatten(model)
