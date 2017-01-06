@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
 
 from keras.optimizers import SGD
-from keras.callbacks import ModelCheckpoint, TensorBoard
+from keras.callbacks import TensorBoard
 # from keras.utils import np_utils
 import numpy as np
 import argparse
-# import os
+import os
 import time
 import tensorflow as tf
 
 from visualize import show_images
 from dataprep import prep_data, dir_gen, Comparator, Unbatch
-from model import model_setup, model_export
+from model import model_setup, model_export, model_checkpoint
 
 # fix random seed for reproducibility
 seed = 7
 np.random.seed(seed)
-
-def_model_file = "crapnet.h5"
 
 classes = ['yes', 'no']
 
@@ -27,16 +25,13 @@ config=[
     ('data/empty', 'no', 0.1),
     ]
 
-#img_size = (240, 320)
-#img_size = (308, 308)
-img_size = (224, 224)
 nb_epoch = 500
 
 #construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 # ap.add_argument("-d", "--dataset", required=True,
 	# help="path to input dataset")
-ap.add_argument("-l", "--load", default=def_model_file)
+ap.add_argument("model")
 ap.add_argument("-t", "--train", action='store_true')
 ap.add_argument("-v", "--validate", action='store_true')
 ap.add_argument("-s", "--show", action='store_true')
@@ -44,8 +39,8 @@ ap.add_argument("-p", "--predict", action='store_true')
 ap.add_argument("-d", "--data")
 ap.add_argument("-m", "--mismatch", action='store_true')
 ap.add_argument("-c", "--clock", action='store_true')
-ap.add_argument("-e", "--export")
-ap.add_argument("-i", "--import")
+ap.add_argument("-e", "--export", action='store_true')
+# ap.add_argument("-i", "--import")
 ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 args = ap.parse_args()
  
@@ -53,8 +48,9 @@ load_data = args.train or args.validate
 if args.mismatch:
     args.show = True
 
-model_file = args.load
-model = model_setup(img_size, model_file)
+model_name, _ = os.path.splitext(args.model)
+model = model_setup(model_name)
+img_size = model.input_shape[1:3]
 
 if load_data:
     (trainIt, testIt) = prep_data(config, classes, args.val_fraction,
@@ -87,7 +83,7 @@ if args.show:
 print(model.summary())
 
 if args.export:
-    model_export(model, args.export)
+    model_export(model, model_name)
     exit()
 
 if args.train:
@@ -98,7 +94,7 @@ if args.train:
             validation_data=testIt,
             nb_val_samples=100,
             pickle_safe=True,
-            callbacks=[ModelCheckpoint(model_file, save_best_only=True)]
+            callbacks=[model_checkpoint(model_name)]
                        # TensorBoard(histogram_freq=1, write_graph=False, write_images=True)]
             )
     # save_model(model, model_file)

@@ -1,6 +1,7 @@
 from keras.models import Sequential, load_model, save_model, model_from_config
 from keras.layers import Activation
 from keras.layers import Convolution2D, MaxPooling2D, Dense, Flatten, Dropout, AveragePooling2D
+from keras.callbacks import ModelCheckpoint
 from keras.backend.tensorflow_backend import _to_tensor, _EPSILON
 from keras import backend as K
 import tensorflow as tf
@@ -70,71 +71,28 @@ def bottleneck(model, layers):
 def finalavg(model, **kwargs):
     model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
     dim = model.output_shape[1]
+    model.add(AveragePooling2D((dim, dim)))
+    flatten(model)
+    model.add(Activation('sigmoid'))
+
+def finalmax(model, **kwargs):
+    model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
+    dim = model.output_shape[1]
     model.add(MaxPooling2D((dim, dim)))
     flatten(model)
     model.add(Activation('sigmoid'))
 
-    # model.add(Convolution2D(1, 1, 1, activation=None, init='he_normal'))
-    # dim = model.output_shape[1]
-    # print('dim is ', dim)
-    # model.add(MaxPooling2D((dim, dim)))
-    # flatten(model)
-    # model.add(Activation('sigmoid'))
-
-def model_setup(img_size, loadfn=None):
+def model_setup(model_name):
     model = None
-    if loadfn:
-        try:
-            model = load_model(loadfn, custom_objects={'my_loss_fn':my_loss_fn})
-            return model
-        except Exception:
-            pass
+    try:
+        model = load_model("trained/"+model_name+".h5", custom_objects={'my_loss_fn':my_loss_fn})
+        return model
+    except Exception:
+        pass
 
     # define the architecture of the network
     model = Sequential()
-
-    # conv(model, 16, input_shape=(img_size+ (1,)))
-    # pool(model)
-    # conv(model, 16)
-    # pool(model)
-    # conv(model, 16)
-    # pool(model)
-    # conv(model, 16)
-    # pool(model)
-    # flatten(model)
-    # dense(model, 16)
-    # finaldense(model)
-
-    # conv(model, 16, input_shape=(img_size+ (1,))) # 3x3
-    # conv(model, 16, subsample=(2, 2)) # +2=5x5,/2
-    # conv(model, 16) # +4=9x9
-    # conv(model, 32, subsample=(2, 2)) # +4=13x13,/2
-    # conv(model, 32) # +8=21x21
-    # conv(model, 32, subsample=(2, 2)) # +8=29x29,/2
-    # conv(model, 32) # +16=45x45
-    # conv(model, 64, subsample=(2, 2)) # +16=61x61, /2
-    # conv(model, 64) # +32=93x93
-    # conv(model, 64, subsample=(2, 2)) # +32=125x125, /2
-    # conv(model, 64) # +64=189x189
-    # conv(model, 64, subsample=(2, 2)) # +64=253x253, /2
-    # conv(model, 64) # +128=381x381
-    # conv(model, 64, dim=1) # 381x381
-    # finalavg(model)
-
-    conv(model, 16, dim=5, input_shape=(img_size+ (1,))) # 5
-    conv(model, 16, subsample=(2, 2)) # +2=7
-    conv(model, 16) # +4=11
-    conv(model, 16, subsample=(2, 2)) # +4=15
-    conv(model, 16) # +8=23
-    conv(model, 16, subsample=(2, 2)) # +8=31
-    conv(model, 16) # +16=47
-    conv(model, 16, subsample=(2, 2)) # +16=63
-    conv(model, 16) # +32=95
-    conv(model, 16, subsample=(2, 2)) # +32=127
-    conv(model, 16) # +64=191
-    conv(model, 16) # +64=255
-    #conv(model, 16, dim=1) # 255
-    finalavg(model)
+    exec(open(model_name+".py").read())
 
     print("[INFO] compiling model...")
     model.compile(
@@ -144,8 +102,10 @@ def model_setup(img_size, loadfn=None):
 
     return model
 
+def model_checkpoint(model_name):
+    return ModelCheckpoint("trained/"+model_name+".h5", save_best_only=True)
 
-def model_export(model, pbfile):
+def model_export(model, model_name):
     # K.set_learning_phase(0)
     config = model.get_config()
     weights = model.get_weights()
@@ -162,7 +122,7 @@ def model_export(model, pbfile):
     tf.reset_default_graph()
     tf.import_graph_def(opt_graph, name="")
     # rewrite = GraphRewriter()
-    write_graph(opt_graph, "./", pbfile, as_text=False)
+    write_graph(opt_graph, "./tfmodel/", model_name+'.pb', as_text=False)
     print([o.name for o in tf.get_default_graph().get_operations()])
     # with open("tfnet.pb", "w") as f:
         # 1
