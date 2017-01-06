@@ -20,8 +20,8 @@ classes = ['yes', 'no']
 
 config=[
     ('data/clear', 'yes', 0.4),
-    ('data/nonempty', 'no', 0.5),
-    ('data/empty', 'no', 0.1),
+    ('data/nonempty', 'no', 0.6),
+    # ('data/empty', 'no', 0.1),
     ]
 
 nb_epoch = 500
