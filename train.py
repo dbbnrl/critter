@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from keras.optimizers import SGD
 from keras.callbacks import TensorBoard
 # from keras.utils import np_utils
 import numpy as np
@@ -42,6 +41,7 @@ ap.add_argument("-c", "--clock", action='store_true')
 ap.add_argument("-e", "--export", action='store_true')
 # ap.add_argument("-i", "--import")
 ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
+ap.add_argument("-r", "--learn-rate", type=float, default=0.001)
 args = ap.parse_args()
  
 load_data = args.train or args.validate
@@ -49,7 +49,7 @@ if args.mismatch:
     args.show = True
 
 model_name, _ = os.path.splitext(args.model)
-model = model_setup(model_name)
+model = model_setup(model_name, args.learn_rate)
 img_size = model.input_shape[1:3]
 
 if load_data:

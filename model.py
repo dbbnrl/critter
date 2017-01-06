@@ -1,4 +1,5 @@
 from keras.models import Sequential, load_model, save_model, model_from_config
+from keras.optimizers import SGD, Adam
 from keras.layers import Activation
 from keras.layers import Convolution2D, MaxPooling2D, Dense, Flatten, Dropout, AveragePooling2D
 from keras.callbacks import ModelCheckpoint
@@ -84,10 +85,11 @@ def finalmax(model, **kwargs):
     flatten(model)
     model.add(Activation('sigmoid'))
 
-def model_setup(model_name):
+def model_setup(model_name, learn_rate):
     model = None
     try:
         model = load_model("trained/"+model_name+".h5", custom_objects={'my_loss_fn':my_loss_fn})
+        K.set_value(model.optimizer.lr, learn_rate)
         return model
     except Exception:
         pass
@@ -99,7 +101,7 @@ def model_setup(model_name):
     print("[INFO] compiling model...")
     model.compile(
             loss=my_loss_fn,
-            optimizer='adam',
+            optimizer=Adam(lr=learn_rate),
         metrics=["binary_accuracy"])
 
     return model
