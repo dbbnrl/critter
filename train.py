@@ -39,8 +39,8 @@ ap.add_argument("-p", "--predict", action='store_true')
 ap.add_argument("-d", "--data")
 ap.add_argument("-m", "--mismatch", action='store_true')
 ap.add_argument("-c", "--clock", action='store_true')
-ap.add_argument("-e", "--export", action='store_true')
-# ap.add_argument("-i", "--import")
+ap.add_argument("-e", "--export_tf", action='store_true')
+ap.add_argument("-i", "--import_tf")
 ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 ap.add_argument("-r", "--learn-rate", type=float, default=0.001)
 args = ap.parse_args()
@@ -61,9 +61,34 @@ if load_data:
                                   batch_size=32)
 
 if args.all_validate:
-    print("Wait a long time...")
-    [loss, acc] = model.evaluate_generator(allIt, allIt.nb_sample, pickle_safe=True)
-    print("LOSS =", loss, "ACC =", acc)
+    if args.import_tf:
+        model_file = args.import_tf
+        graph_def = tf.GraphDef()
+        with open(model_file, "rb") as gfile:
+            graph_def.ParseFromString(gfile.read())
+        tf.reset_default_graph()
+        tf.import_graph_def(graph_def, name="")
+        with tf.Session() as sess:
+            graph = sess.graph
+            input = graph.get_tensor_by_name('convolution2d_input_1:0')
+            output = graph.get_tensor_by_name('Sigmoid:0')
+            cnt = 0
+            corrects = 0
+            for (X, Y) in allIt:
+                feed = {input : X}
+                preds = sess.run(output, feed_dict=feed)
+                Yp = np.squeeze(preds)
+                Yp = np.round(Yp)
+                corrects += np.sum(Y == Yp)
+                cnt += len(Y)
+                print("total =", cnt, "correct =", corrects, "acc =", (corrects / cnt))
+                if (cnt >= allIt.nb_sample):
+                    break
+    else:
+        print("Wait a long time...")
+        [loss, acc] = model.evaluate_generator(allIt, allIt.nb_sample, pickle_safe=True)
+        print("LOSS =", loss, "ACC =", acc)
+
 
 if args.show:
     if args.data:
@@ -88,7 +113,7 @@ if args.show:
 
 print(model.summary())
 
-if args.export:
+if args.export_tf:
     model_export(model, model_name)
     exit()
 

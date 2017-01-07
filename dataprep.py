@@ -55,7 +55,6 @@ def prep_data(config, classes, test_size, **kwargs):
                                                     classes=classes,
                                                     dir_class=cls,
                                                     follow_links=True)
-                print('+', len(X), len(Y))
                 allX += X
                 allY = np.append(allY, Y)
                 if test_size:
@@ -71,7 +70,6 @@ def prep_data(config, classes, test_size, **kwargs):
                 weights.append(weight)
         trainIt = MergeIterator(train_its, weights=weights)
         testIt = MergeIterator(test_its, weights=weights)
-        print(len(allX), len(allY))
         allIt = FileListIterator(pred_gen, allX, allY, nb_class,
                                  dim_ordering=pred_gen.dim_ordering,
                                  shuffle=False,

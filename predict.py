@@ -21,13 +21,15 @@ from PIL import Image
 from dataprep import preprocess
 
 img_size = (224, 224)
+trials = 200
 
 ap = argparse.ArgumentParser()
 ap.add_argument("model")
 args = ap.parse_args()
 
-model_name, _ = os.path.splitext(args.model)
-model_file = "tfmodel/"+model_name+".pb"
+# model_name, _ = os.path.splitext(args.model)
+# model_file = "tfmodel/"+model_name+".pb"
+model_file = args.model
 
 graph_def = tf.GraphDef()
 with open(model_file, "rb") as gfile:
@@ -37,21 +39,21 @@ shape = (1,) + (img_size) + (1,)
 img = Image.open("test.jpg")
 img = img.convert('L')
 img = img.resize(img_size, Image.ANTIALIAS)
-img = np.asarray(img, dtype='float32')
-img = img.reshape(shape)
+arr = np.asarray(img, dtype='float32')
+arr = arr.reshape(shape)
 with tf.Session() as sess:
     graph = sess.graph
     input = graph.get_tensor_by_name('convolution2d_input_1:0')
     output = graph.get_tensor_by_name('Sigmoid:0')
-    feed = {input : img}
     start = time.time()
-    for _ in range(200):
-        img = preprocess(img)
+    for _ in range(trials):
+        arr = preprocess(arr)
+        feed = {input : arr}
         preds = sess.run(output,
                          feed_dict=feed)
     done = time.time()
     delta = done - start
-    print("Took", delta / 200.0, "s per.")
+    print("Took", delta / trials, "s per.")
     pred = preds[0]
     print("Prediction=", 1.0-pred)
 
