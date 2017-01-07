@@ -9,7 +9,7 @@ import time
 import tensorflow as tf
 
 from visualize import show_images
-from dataprep import prep_data, dir_gen, Comparator, Unbatch
+from dataprep import prep_data, dir_gen, Comparator, Unbatch, preprocess
 from model import model_setup, model_export, model_checkpoint
 
 # fix random seed for reproducibility
@@ -136,6 +136,7 @@ if args.clock:
     print("Running predictions...")
     start = time.time()
     for _ in range(200):
+        X = preprocess(X)
         model.predict_on_batch(X)
     done = time.time()
     delta = done - start

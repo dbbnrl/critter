@@ -8,7 +8,7 @@ from keras import backend as K
 import tensorflow as tf
 from tensorflow.python.training.training import write_graph
 from tensorflow.python.framework.graph_util import convert_variables_to_constants
-from tensorflow.python.tools.optimize_for_inference_lib import optimize_for_inference
+# from tensorflow.python.tools.optimize_for_inference_lib import optimize_for_inference
 # from tensorflow.tools.quantize_graph import GraphRewriter
 
 pos_weight = 5.0
@@ -29,10 +29,10 @@ def my_loss_fn(y_true, y_pred):
     return K.mean(weighted_binary_crossentropy(y_pred, y_true, pos_weight), axis=-1)
 
 def convxy(model, layers, xdim, ydim,
-           activation='relu', **kwargs):
+           activation='relu', border_mode='same', **kwargs):
     model.add(Convolution2D(layers, xdim, ydim,
                             activation=activation,
-                            border_mode="same",
+                            border_mode=border_mode,
                             init="he_normal",
                             **kwargs))
 
@@ -122,7 +122,8 @@ def model_export(model, model_name):
     # saver.save(K.get_session(), "tf_checkpoint")
     graph_def = K.get_session().graph.as_graph_def()
     frozen_graph = convert_variables_to_constants(K.get_session(), graph_def, [model.output.name[:-2]])
-    opt_graph = optimize_for_inference(frozen_graph, [model.input.name[:-2]], [model.output.name[:-2]], tf.float32.as_datatype_enum)
+    # opt_graph = optimize_for_inference(frozen_graph, [model.input.name[:-2]], [model.output.name[:-2]], tf.float32.as_datatype_enum)
+    opt_graph = frozen_graph
     tf.reset_default_graph()
     tf.import_graph_def(opt_graph, name="")
     # rewrite = GraphRewriter()
