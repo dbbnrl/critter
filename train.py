@@ -33,6 +33,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("model")
 ap.add_argument("-t", "--train", action='store_true')
 ap.add_argument("-v", "--validate", action='store_true')
+ap.add_argument("-a", "--all-validate", action='store_true')
 ap.add_argument("-s", "--show", action='store_true')
 ap.add_argument("-p", "--predict", action='store_true')
 ap.add_argument("-d", "--data")
@@ -44,7 +45,7 @@ ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 ap.add_argument("-r", "--learn-rate", type=float, default=0.001)
 args = ap.parse_args()
  
-load_data = args.train or args.validate
+load_data = args.train or args.validate or args.all_validate
 if args.mismatch:
     args.show = True
 
@@ -53,11 +54,16 @@ model = model_setup(model_name, args.learn_rate)
 img_size = model.input_shape[1:3]
 
 if load_data:
-    (trainIt, testIt) = prep_data(config, classes, args.val_fraction,
+    (trainIt, testIt, allIt) = prep_data(config, classes, args.val_fraction,
                                   target_size=img_size,
                                   color_mode='grayscale',
                                   class_mode='binary',
                                   batch_size=32)
+
+if args.all_validate:
+    print("Wait a long time...")
+    [loss, acc] = model.evaluate_generator(allIt, allIt.nb_sample, pickle_safe=True)
+    print("LOSS =", loss, "ACC =", acc)
 
 if args.show:
     if args.data:
@@ -67,7 +73,7 @@ if args.show:
                       target_size=img_size)
     elif args.validate:
         gen = testIt
-        [loss, acc] = model.evaluate_generator(gen, 200)
+        [loss, acc] = model.evaluate_generator(gen, 200, pickle_safe=True)
         print("LOSS =", loss, "ACC =", acc)
     else:
         gen = trainIt

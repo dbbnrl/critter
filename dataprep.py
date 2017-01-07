@@ -21,6 +21,7 @@ def preprocess(x):
     x -= 127.5
     x /= 48.
 
+
     return x
 
 def preprocess_train(x):
@@ -40,16 +41,23 @@ train_gen = ImageDataGenerator(
                            preprocessing_function=preprocess_train,
                            horizontal_flip=True)
 
+pred_gen = ImageDataGenerator(preprocessing_function=preprocess)
+
 def prep_data(config, classes, test_size, **kwargs):
         train_its = []
         test_its = []
         weights = []
+        allX = []
+        allY = np.empty(0)
         for (subdir, cls, weight) in config:
                 print("Loading " + subdir)
                 (nb_class, X, Y) = enumerate_images(subdir,
                                                     classes=classes,
                                                     dir_class=cls,
                                                     follow_links=True)
+                print('+', len(X), len(Y))
+                allX += X
+                allY = np.append(allY, Y)
                 if test_size:
                         (Xtrain, Xtest, Ytrain, Ytest) = train_test_split(X, Y, test_size=test_size)
                 else:
@@ -63,10 +71,15 @@ def prep_data(config, classes, test_size, **kwargs):
                 weights.append(weight)
         trainIt = MergeIterator(train_its, weights=weights)
         testIt = MergeIterator(test_its, weights=weights)
-        return (trainIt, testIt)
+        print(len(allX), len(allY))
+        allIt = FileListIterator(pred_gen, allX, allY, nb_class,
+                                 dim_ordering=pred_gen.dim_ordering,
+                                 shuffle=False,
+                                 **kwargs)
+        return (trainIt, testIt, allIt)
 
 def dir_gen(dirname, **kwargs):
-        return ImageDataGenerator(preprocessing_function=preprocess).flow_from_directory(
+        return pred_gen.flow_from_directory(
                         dirname,
                         shuffle=False,
                         classes=['.'],
