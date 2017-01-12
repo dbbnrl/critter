@@ -1,6 +1,6 @@
-from keras.models import Sequential, load_model, save_model, model_from_config
+from keras.models import Sequential, Model, load_model, save_model, model_from_config
 from keras.optimizers import SGD, Adam
-from keras.layers import Activation
+from keras.layers import Activation, Input
 from keras.layers import Convolution2D, MaxPooling2D, Dense, Flatten, Dropout, AveragePooling2D
 from keras.callbacks import ModelCheckpoint
 from keras.backend.tensorflow_backend import _to_tensor, _EPSILON
@@ -30,60 +30,60 @@ def my_loss_fn(y_true, y_pred):
 
 def convxy(model, layers, xdim, ydim,
            activation='relu', border_mode='same', **kwargs):
-    model.add(Convolution2D(layers, xdim, ydim,
+    return Convolution2D(layers, xdim, ydim,
                             activation=activation,
                             border_mode=border_mode,
                             init="he_normal",
-                            **kwargs))
+                            **kwargs)(model)
 
 def conv(model, layers, dim=3, **kwargs):
-    convxy(model, layers, dim, dim, **kwargs)
+    return convxy(model, layers, dim, dim, **kwargs)
 
 def conv1d(model, layers, dim=3, **kwargs):
-    convxy(model, layers, dim, 1, **kwargs)
-    convxy(model, layers, 1, dim, **kwargs)
+    model = convxy(model, layers, dim, 1, **kwargs)
+    return convxy(model, layers, 1, dim, **kwargs)
 
 def pool(model, dim=2, **kwargs):
-    model.add(MaxPooling2D(pool_size=(dim, dim),
-                           **kwargs))
+    return MaxPooling2D(pool_size=(dim, dim),
+                           **kwargs)(model)
 
 def flatten(model, **kwargs):
-    model.add(Flatten(**kwargs))
+    return Flatten(**kwargs)(model)
 
 def dense(model, layers,
           activation='relu', **kwargs):
-    model.add(Dense(layers,
+    return Dense(layers,
                     activation=activation,
                     init='he_normal',
-                    **kwargs))
+                    **kwargs)(model)
 
 def finaldense(model, **kwargs):
-    model.add(Dense(1,
+    return Dense(1,
                     activation="sigmoid",
                     init='he_normal',
-                    **kwargs))
+                    **kwargs)(model)
 
 def dropout(model, pct, **kwargs):
-    model.add(Dropout(pct, **kwargs))
+    return Dropout(pct, **kwargs)(model)
 
 def bottleneck(model, layers, dim=3, **kwargs):
-    conv(model, layers//2, dim=1)
-    conv(model, layers//2, dim=dim)
-    conv(model, layers,   dim=1)
+    model = conv(model, layers//2, dim=1)
+    model = conv(model, layers//2, dim=dim)
+    return conv(model, layers,   dim=1)
 
 def finalavg(model, **kwargs):
-    conv(model, 1, dim=1, activation=None)
+    model = conv(model, 1, dim=1, activation=None)
     dim = model.output_shape[1]
-    model.add(AveragePooling2D((dim, dim)))
-    flatten(model)
-    model.add(Activation('sigmoid'))
+    model = AveragePooling2D((dim, dim))(model)
+    model = flatten(model)
+    return Activation('sigmoid')(model)
 
 def finalmax(model, **kwargs):
-    conv(model, 1, dim=1, activation=None)
+    model = conv(model, 1, dim=1, activation=None)
     dim = model.output_shape[1]
-    model.add(MaxPooling2D((dim, dim)))
-    flatten(model)
-    model.add(Activation('sigmoid'))
+    model = MaxPooling2D((dim, dim))(model)
+    model = flatten(model)
+    return Activation('sigmoid')(model)
 
 def model_setup(model_name, learn_rate):
     model = None
@@ -95,8 +95,10 @@ def model_setup(model_name, learn_rate):
         pass
 
     # define the architecture of the network
-    model = Sequential()
+    #model = Sequential()
     exec(open(model_name+".py").read())
+    i, o = build()
+    model = Model(input=i, output=o)
 
     print("[INFO] compiling model...")
     model.compile(
@@ -116,6 +118,7 @@ def model_export(model, model_name):
     K.clear_session()
     K.set_learning_phase(0)
     model = Sequential.from_config(config)
+    #model = model_from_config(config)
     # K.set_learning_phase(0)
     model.set_weights(weights)
     # saver = Saver()
