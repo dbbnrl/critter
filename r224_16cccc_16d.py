@@ -1,3 +1,4 @@
+from model import *
 def build():
     i = Input(shape=(224, 224, 1))
     m = i

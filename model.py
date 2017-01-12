@@ -1,7 +1,10 @@
+from importlib import import_module
 from keras.models import Sequential, Model, load_model, save_model, model_from_config
 from keras.optimizers import SGD, Adam
-from keras.layers import Activation, Input
+from keras.layers import Activation, Input, merge, GlobalAveragePooling2D, GlobalMaxPooling2D
 from keras.layers import Convolution2D, MaxPooling2D, Dense, Flatten, Dropout, AveragePooling2D
+from keras.regularizers import l2
+from keras.layers.normalization import BatchNormalization
 from keras.callbacks import ModelCheckpoint
 from keras.backend.tensorflow_backend import _to_tensor, _EPSILON
 from keras import backend as K
@@ -28,62 +31,104 @@ def weighted_binary_crossentropy(output, target, pos_weight, from_logits=False):
 def my_loss_fn(y_true, y_pred):
     return K.mean(weighted_binary_crossentropy(y_pred, y_true, pos_weight), axis=-1)
 
-def convxy(model, layers, xdim, ydim,
+def convxy(model, filters, xdim, ydim,
            activation='relu', border_mode='same', **kwargs):
-    return Convolution2D(layers, xdim, ydim,
+    return Convolution2D(filters, xdim, ydim,
                             activation=activation,
                             border_mode=border_mode,
-                            init="he_normal",
+                            init="he_uniform",
                             **kwargs)(model)
 
-def conv(model, layers, dim=3, **kwargs):
-    return convxy(model, layers, dim, dim, **kwargs)
+def conv(model, filters, dim=3, **kwargs):
+    return convxy(model, filters, dim, dim, **kwargs)
 
-def conv1d(model, layers, dim=3, **kwargs):
-    model = convxy(model, layers, dim, 1, **kwargs)
-    return convxy(model, layers, 1, dim, **kwargs)
+def conv1d(model, filters, dim=3, **kwargs):
+    model = convxy(model, filters, dim, 1, **kwargs)
+    return convxy(model, filters, 1, dim, **kwargs)
 
-def pool(model, dim=2, **kwargs):
+def mpool(model, dim=2, **kwargs):
     return MaxPooling2D(pool_size=(dim, dim),
                            **kwargs)(model)
+
+def apool(model, dim=2, **kwargs):
+    return AveragePooling2D(pool_size=(dim, dim),
+                           **kwargs)(model)
+
+def gmpool(model):
+    return GlobalMaxPooling2D()(model)
+
+def gapool(model):
+    return GlobalAveragePooling2D()(model)
 
 def flatten(model, **kwargs):
     return Flatten(**kwargs)(model)
 
-def dense(model, layers,
+def dense(model, filters,
           activation='relu', **kwargs):
-    return Dense(layers,
+    return Dense(filters,
                     activation=activation,
-                    init='he_normal',
+                    init='he_uniform',
                     **kwargs)(model)
 
 def finaldense(model, **kwargs):
-    return Dense(1,
-                    activation="sigmoid",
-                    init='he_normal',
-                    **kwargs)(model)
+    return dense(model, 1, activation='sigmoid', **kwargs)
 
 def dropout(model, pct, **kwargs):
     return Dropout(pct, **kwargs)(model)
 
-def bottleneck(model, layers, dim=3, **kwargs):
-    model = conv(model, layers//2, dim=1)
-    model = conv(model, layers//2, dim=dim)
-    return conv(model, layers,   dim=1)
+def activation(model, mode, **kwargs):
+    return Activation(mode, **kwargs)(model)
+
+def bottleneck(model, filters, dim=3, **kwargs):
+    model = conv(model, filters//2, dim=1)
+    model = conv(model, filters//2, dim=dim)
+    return conv(model, filters,   dim=1)
 
 def finalavg(model, **kwargs):
     model = conv(model, 1, dim=1, activation=None)
-    dim = model.output_shape[1]
-    model = AveragePooling2D((dim, dim))(model)
+    model = gapool(model)
     model = flatten(model)
-    return Activation('sigmoid')(model)
+    return activation(model, 'sigmoid')
 
 def finalmax(model, **kwargs):
     model = conv(model, 1, dim=1, activation=None)
-    dim = model.output_shape[1]
-    model = MaxPooling2D((dim, dim))(model)
+    model = gmpool(model)
     model = flatten(model)
-    return Activation('sigmoid')(model)
+    return activation(model, 'sigmoid')
+
+def bnorm(model, weight_decay=1E-4, **kwargs):
+    return BatchNormalization(mode=0,
+                              gamma_regularizer=l2(weight_decay),
+                              beta_regularizer=l2(weight_decay),
+                              **kwargs)(model)
+
+def dn_conv(model, filters, weight_decay=1E-4, **kwargs):
+    return conv(model, filters,
+                activation=None, bias=False,
+                W_regularizer=l2(weight_decay), **kwargs)
+
+def dn_convstack(model, filters, bottleneck=None):
+    model = activation(model, 'relu')
+    if bottleneck and (bottleneck < model.get_shape()[-1]):
+        model = dn_conv(model, bottleneck, dim=1)
+        model = bnorm(model)
+        model = activation(model, 'relu')
+    return dn_conv(model, filters)
+
+def dn_trans(model, filters):
+    model = dn_conv(model, filters, dim=1)
+    model = apool(model, dim=2)
+    return bnorm(model)
+
+def dn_dense(model, layers, in_filters, filters_per_layer, bottleneck=None):
+    filters = in_filters
+    flist = [model]
+    for i in range(layers):
+        model = dn_convstack(model, filters_per_layer, bottleneck=bottleneck)
+        flist.append(model)
+        model = merge(flist, mode='concat')
+        filters += filters_per_layer
+    return model, filters
 
 def model_setup(model_name, learn_rate):
     model = None
@@ -96,8 +141,10 @@ def model_setup(model_name, learn_rate):
 
     # define the architecture of the network
     #model = Sequential()
-    exec(open(model_name+".py").read())
-    i, o = build()
+    # builder = __import(model_name+".py")
+    # exec(open(model_name+".py").read())
+    builder = import_module(model_name)
+    i, o = builder.build()
     model = Model(input=i, output=o)
 
     print("[INFO] compiling model...")

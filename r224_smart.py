@@ -1,6 +1,4 @@
 def build():
-    img_size = (224, 224)
-
     i = Input(shape=(224, 224, 1))
     m = i
     m = conv(m, 16, dim=5) # 5
