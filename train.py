@@ -19,8 +19,9 @@ np.random.seed(seed)
 classes = ['yes', 'no']
 
 config=[
-    ('data/clear', 'yes', 0.4),
-    ('data/nonempty', 'no', 0.6),
+    ('data/clearb', 'yes', 0.4),
+    ('data/nonempty', 'no', 0.4),
+    ('data/allin', 'no', 0.2),
     # ('data/empty', 'no', 0.1),
     ]
 
