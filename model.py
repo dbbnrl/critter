@@ -102,9 +102,9 @@ def bnorm(model, weight_decay=1E-4, **kwargs):
                               beta_regularizer=l2(weight_decay),
                               **kwargs)(model)
 
-def dn_conv(model, filters, weight_decay=1E-4, **kwargs):
+def dn_conv(model, filters, bias=False, weight_decay=1E-4, **kwargs):
     return conv(model, filters,
-                activation=None, bias=False,
+                activation=None, bias=bias,
                 W_regularizer=l2(weight_decay), **kwargs)
 
 def dn_convstack(model, filters, bottleneck=None):
