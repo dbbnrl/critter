@@ -97,7 +97,7 @@ class Comparator(object):
         if not isinstance(tup, tuple):
             tup = (tup,)
         X = tup[0]
-        Yp = self.model.predict_proba(X)
+        Yp = self.model.predict_on_batch(X)
         return tup + (Yp,)
 
 # Transform an iterator that yields (batch of X, batch of Y, ...) into one that
