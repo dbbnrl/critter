@@ -19,7 +19,7 @@ np.random.seed(seed)
 classes = ['yes', 'no']
 
 config=[
-    ('data/clearb', 'yes', 0.4),
+    ('data/clear', 'yes', 0.4),
     ('data/nonempty', 'no', 0.4),
     ('data/allin', 'no', 0.2),
     # ('data/empty', 'no', 0.1),
@@ -44,6 +44,7 @@ ap.add_argument("-e", "--export_tf", action='store_true')
 ap.add_argument("-i", "--import_tf")
 ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 ap.add_argument("-r", "--learn-rate", type=float, default=0.001)
+ap.add_argument("-b", "--batch-size", type=int, default=64)
 args = ap.parse_args()
  
 load_data = args.train or args.validate or args.all_validate
@@ -59,7 +60,7 @@ if load_data:
                                   target_size=img_size,
                                   color_mode='grayscale',
                                   class_mode='binary',
-                                  batch_size=32)
+                                  batch_size=args.batch_size)
 
 if args.all_validate:
     if args.import_tf:
@@ -121,10 +122,10 @@ if args.export_tf:
 if args.train:
     model.fit_generator(
             trainIt,
-            samples_per_epoch=2016,
+            samples_per_epoch=2048,
             nb_epoch=nb_epoch,
             validation_data=testIt,
-            nb_val_samples=100,
+            nb_val_samples=256,
             pickle_safe=True,
             callbacks=[model_checkpoint(model_name)]
                        # TensorBoard(histogram_freq=1, write_graph=False, write_images=True)]

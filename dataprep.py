@@ -43,7 +43,7 @@ train_gen = ImageDataGenerator(
 
 pred_gen = ImageDataGenerator(preprocessing_function=preprocess)
 
-def prep_data(config, classes, test_size, **kwargs):
+def prep_data(config, classes, test_size, batch_size=64, **kwargs):
         train_its = []
         test_its = []
         weights = []
@@ -63,16 +63,18 @@ def prep_data(config, classes, test_size, **kwargs):
                         (Xtrain, Xtest, Ytrain, Ytest) = (X, X, Y, Y)
                 train_its.append(FileListIterator(train_gen, Xtrain, Ytrain, nb_class,
                                                   dim_ordering=train_gen.dim_ordering,
+                                                  batch_size=batch_size,
                                                   **kwargs))
                 test_its.append(FileListIterator(train_gen, Xtest, Ytest, nb_class,
                                                   dim_ordering=train_gen.dim_ordering,
+                                                  batch_size=batch_size,
                                                  **kwargs))
                 weights.append(weight)
-        trainIt = MergeIterator(train_its, weights=weights)
-        testIt = MergeIterator(test_its, weights=weights)
+        trainIt = MergeIterator(train_its, weights=weights, batch_size=batch_size)
+        testIt = MergeIterator(test_its, weights=weights, batch_size=batch_size)
         allIt = FileListIterator(pred_gen, allX, allY, nb_class,
                                  dim_ordering=pred_gen.dim_ordering,
-                                 shuffle=False,
+                                 shuffle=False, batch_size=batch_size,
                                  **kwargs)
         return (trainIt, testIt, allIt)
 
