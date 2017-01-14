@@ -1,6 +1,6 @@
 from model import *
 
-def dn_conv(model, filters, bias=True, weight_decay=1E-4, **kwargs):
+def dn_conv(model, filters, bias=False, weight_decay=1E-4, **kwargs):
     return conv(model, filters,
         activation=None, bias=bias,
         W_regularizer=l2(weight_decay), **kwargs)
@@ -42,21 +42,23 @@ def build():
     nf = 16
     g = 8
     m = dn_convstep(m, nf, dim=7, subsample=(2, 2))
+    m, nf = dn_dense(m, 1, nf, g)
+    #nf //= 2 # compression
+    m = dn_trans(m)
     m, nf = dn_dense(m, 2, nf, g)
     #nf //= 2 # compression
     m = dn_trans(m)
-    m, nf = dn_dense(m, 2, nf, g, bottleneck=16)
+    m, nf = dn_dense(m, 2, nf, g)
     #nf //= 2 # compression
     m = dn_trans(m)
-    m, nf = dn_dense(m, 2, nf, g, bottleneck=16)
+    m, nf = dn_dense(m, 2, nf, g)
     #nf //= 2 # compression
     m = dn_trans(m)
-    m, nf = dn_dense(m, 2, nf, g, bottleneck=16)
-    #nf //= 2 # compression
-    m = dn_trans(m)
-    m, nf = dn_dense(m, 2, nf, g, bottleneck=16)
-    m = dn_conv(m, 1, dim=1, bias=True)
-    m = gmpool(m)
-    m = activation(m, 'sigmoid')
+    m, nf = dn_dense(m, 2, nf, g)
+    m = gapool(m)
+    m = dense(m, 1, activation='sigmoid', W_regularizer=l2(1E-4), b_regularizer=l2(1E-4))
+    #m = dn_conv(m, 1, dim=1, bias=True)
+    #m = gmpool(m)
+    #m = activation(m, 'sigmoid')
     o = m
     return i, o
