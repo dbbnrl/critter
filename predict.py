@@ -43,12 +43,12 @@ arr = np.asarray(img, dtype='float32')
 arr = arr.reshape(shape)
 with tf.Session() as sess:
     graph = sess.graph
-    input = graph.get_tensor_by_name('convolution2d_input_1:0')
+    input = graph.get_tensor_by_name('input_1:0')
     output = graph.get_tensor_by_name('Sigmoid:0')
     start = time.time()
     for _ in range(trials):
-        arr = preprocess(arr)
-        feed = {input : arr}
+        parr = preprocess(np.copy(arr))
+        feed = {input : parr}
         preds = sess.run(output,
                          feed_dict=feed)
     done = time.time()

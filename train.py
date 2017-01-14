@@ -72,7 +72,7 @@ if args.all_validate:
         tf.import_graph_def(graph_def, name="")
         with tf.Session() as sess:
             graph = sess.graph
-            input = graph.get_tensor_by_name('convolution2d_input_1:0')
+            input = graph.get_tensor_by_name('input_1:0')
             output = graph.get_tensor_by_name('Sigmoid:0')
             cnt = 0
             corrects = 0

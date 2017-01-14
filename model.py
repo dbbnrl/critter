@@ -11,7 +11,7 @@ from keras import backend as K
 import tensorflow as tf
 from tensorflow.python.training.training import write_graph
 from tensorflow.python.framework.graph_util import convert_variables_to_constants
-# from tensorflow.python.tools.optimize_for_inference_lib import optimize_for_inference
+from tensorflow.python.tools.optimize_for_inference_lib import optimize_for_inference
 # from tensorflow.tools.quantize_graph import GraphRewriter
 
 pos_weight = 5.0
@@ -87,13 +87,13 @@ def bottleneck(model, filters, dim=3, **kwargs):
 def finalavg(model, **kwargs):
     model = conv(model, 1, dim=1, activation=None)
     model = gapool(model)
-    model = flatten(model)
+    # model = flatten(model)
     return activation(model, 'sigmoid')
 
 def finalmax(model, **kwargs):
     model = conv(model, 1, dim=1, activation=None)
     model = gmpool(model)
-    model = flatten(model)
+    # model = flatten(model)
     return activation(model, 'sigmoid')
 
 def bnorm(model, weight_decay=1E-4, **kwargs):
@@ -164,7 +164,8 @@ def model_export(model, model_name):
     weights = model.get_weights()
     K.clear_session()
     K.set_learning_phase(0)
-    model = Sequential.from_config(config)
+    #model = Sequential.from_config(config)
+    model = Model.from_config(config)
     #model = model_from_config(config)
     # K.set_learning_phase(0)
     model.set_weights(weights)
@@ -172,8 +173,8 @@ def model_export(model, model_name):
     # saver.save(K.get_session(), "tf_checkpoint")
     graph_def = K.get_session().graph.as_graph_def()
     frozen_graph = convert_variables_to_constants(K.get_session(), graph_def, [model.output.name[:-2]])
-    # opt_graph = optimize_for_inference(frozen_graph, [model.input.name[:-2]], [model.output.name[:-2]], tf.float32.as_datatype_enum)
-    opt_graph = frozen_graph
+    opt_graph = optimize_for_inference(frozen_graph, [model.input.name[:-2]], [model.output.name[:-2]], tf.float32.as_datatype_enum)
+    #opt_graph = frozen_graph
     tf.reset_default_graph()
     tf.import_graph_def(opt_graph, name="")
     # rewrite = GraphRewriter()
