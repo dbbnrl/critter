@@ -104,31 +104,39 @@ def bnorm(model, weight_decay=1E-4, **kwargs):
 
 def dn_conv(model, filters, bias=False, weight_decay=1E-4, **kwargs):
     return conv(model, filters,
-                activation=None, bias=bias,
-                W_regularizer=l2(weight_decay), **kwargs)
+        activation=None, bias=bias,
+        W_regularizer=l2(weight_decay), **kwargs)
 
-def dn_convstack(model, filters, bottleneck=None):
-    model = activation(model, 'relu')
+def dn_convstep(model, filters, bottleneck=None, **kwargs):
     if bottleneck and (bottleneck < model.get_shape()[-1]):
         model = dn_conv(model, bottleneck, dim=1)
         model = bnorm(model)
         model = activation(model, 'relu')
-    return dn_conv(model, filters)
+    model = dn_conv(model, filters, **kwargs)
+    model = bnorm(model)
+    model = activation(model, 'relu')
+    return model
 
-def dn_trans(model, filters):
-    model = dn_conv(model, filters, dim=1)
-    model = apool(model, dim=2)
-    return bnorm(model)
+def dn_dstep(model, in_filters, filters_per_layer, bottleneck=None):
+    oldmodel = model
+    model = dn_convstep(model, filters_per_layer, bottleneck=bottleneck)
+    model = merge([oldmodel, model], mode='concat')
+    return model, in_filters + filters_per_layer
 
 def dn_dense(model, layers, in_filters, filters_per_layer, bottleneck=None):
     filters = in_filters
-    flist = [model]
     for i in range(layers):
-        model = dn_convstack(model, filters_per_layer, bottleneck=bottleneck)
-        flist.append(model)
-        model = merge(flist, mode='concat')
-        filters += filters_per_layer
+        model, filters = dn_dstep(model, filters, filters_per_layer, bottleneck=bottleneck)
     return model, filters
+
+def dn_trans(model, filters=None):
+    if filters:
+        model = dn_conv(model, filters, dim=1)
+    model = apool(model, dim=2)
+    if filters:
+        model = bnorm(model)
+        model = activation(model, 'relu')
+    return model
 
 def model_setup(model_name, learn_rate):
     model = None
