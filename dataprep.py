@@ -112,6 +112,8 @@ class Unbatch(object):
         self.batchiter.reset()
     def nextbatch(self):
         tup = next(self.batchiter)
+        if not isinstance(tup, tuple):
+                tup = (tup,)
         self.iters = [iter(i) for i in tup]
     def __next__(self):
         try:

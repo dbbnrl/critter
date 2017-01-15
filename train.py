@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from keras.callbacks import TensorBoard
+from keras.preprocessing.image import load_img
 # from keras.utils import np_utils
 import numpy as np
 import argparse
@@ -11,6 +12,7 @@ import tensorflow as tf
 from visualize import show_images
 from dataprep import prep_data, dir_gen, Comparator, Unbatch, preprocess
 from model import model_setup, model_export, model_checkpoint
+from filtvis import vis_optimage, vis_activations
 
 # fix random seed for reproducibility
 seed = 7
@@ -45,10 +47,11 @@ ap.add_argument("-i", "--import_tf")
 ap.add_argument("-f", "--val-fraction", type=float, default=0.1)
 ap.add_argument("-r", "--learn-rate", type=float, default=0.001)
 ap.add_argument("-b", "--batch-size", type=int, default=64)
+ap.add_argument("-l", "--layer")
 args = ap.parse_args()
  
 load_data = args.train or args.validate or args.all_validate
-if args.mismatch:
+if args.mismatch or args.layer:
     args.show = True
 
 model_name, _ = os.path.splitext(args.model)
@@ -93,6 +96,7 @@ if args.all_validate:
 
 
 if args.show:
+    gen = None
     if args.data:
         # Unlabeled data
         gen = dir_gen(args.data,
@@ -102,12 +106,20 @@ if args.show:
         gen = testIt
         [loss, acc] = model.evaluate_generator(gen, 200, pickle_safe=True)
         print("LOSS =", loss, "ACC =", acc)
-    else:
+    elif load_data:
         gen = trainIt
-    if args.predict:
-        gen = Unbatch(Comparator(model, gen))
-    else:
-        gen = Unbatch(gen)
+    if gen:
+        if args.predict:
+            gen = Unbatch(Comparator(model, gen))
+        else:
+            gen = Unbatch(gen)
+        print(np.shape(next(gen)))
+    if args.layer:
+        if gen:
+            vis_activations(model, args.layer, gen)
+        else:
+            vis_optimage(model, args.layer)
+        exit()
     # If we're doing predictions and working from LABELED data, we can compare predictions
     # and labels.
     do_compare = args.predict and not args.data
