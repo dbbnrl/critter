@@ -13,6 +13,7 @@ from tensorflow.python.training.training import write_graph
 from tensorflow.python.framework.graph_util import convert_variables_to_constants
 # from tensorflow.python.tools.optimize_for_inference_lib import optimize_for_inference
 # from tensorflow.tools.quantize_graph import GraphRewriter
+import numpy as np
 
 pos_weight = 5.0
 
@@ -48,10 +49,12 @@ def conv1d(model, filters, dim=3, **kwargs):
 
 def mpool(model, dim=2, **kwargs):
     return MaxPooling2D(pool_size=(dim, dim),
+                        border_mode='same',
                            **kwargs)(model)
 
 def apool(model, dim=2, **kwargs):
     return AveragePooling2D(pool_size=(dim, dim),
+                            border_mode='same',
                            **kwargs)(model)
 
 def gmpool(model):
@@ -97,6 +100,7 @@ def finalmax(model, **kwargs):
     return activation(model, 'sigmoid')
 
 def bnorm(model, weight_decay=1E-4, **kwargs):
+    #return model
     return BatchNormalization(mode=0,
                               gamma_regularizer=l2(weight_decay),
                               beta_regularizer=l2(weight_decay),
@@ -105,6 +109,7 @@ def bnorm(model, weight_decay=1E-4, **kwargs):
 def dn_conv(model, filters, bias=False, weight_decay=1E-4, **kwargs):
     return conv(model, filters,
         activation=None, bias=bias,
+        #activation=None, bias=True,
         W_regularizer=l2(weight_decay), **kwargs)
 
 def dn_convstep(model, filters, bottleneck=None, **kwargs):
@@ -129,10 +134,10 @@ def dn_dense(model, layers, in_filters, filters_per_layer, bottleneck=None):
         model, filters = dn_dstep(model, filters, filters_per_layer, bottleneck=bottleneck)
     return model, filters
 
-def dn_trans(model, filters=None):
+def dn_trans(model, filters=None, mode=apool):
     if filters:
         model = dn_conv(model, filters, dim=1)
-    model = apool(model, dim=2)
+    model = mode(model, dim=2)
     if filters:
         model = bnorm(model)
         model = activation(model, 'relu')
@@ -164,7 +169,7 @@ def model_setup(model_name, learn_rate):
     return model
 
 def model_checkpoint(model_name):
-    return ModelCheckpoint("trained/"+model_name+".h5", save_best_only=True)
+    return ModelCheckpoint("trained/"+model_name+".h5", monitor='val_loss', save_best_only=True)
 
 def model_export(model, model_name):
     # K.set_learning_phase(0)

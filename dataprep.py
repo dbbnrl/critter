@@ -26,8 +26,10 @@ def preprocess(x):
 
 def preprocess_train(x):
     x = preprocess(x)
-#    if np.random.random() < 0.5:
-#        x *= -1.
+    if np.random.random() < 0.5:
+        x *= -1.
+    x *= (np.random.random()*0.2)+0.9
+    x += (np.random.random()*0.2)-0.1
     return x
 
 train_gen = ImageDataGenerator(
