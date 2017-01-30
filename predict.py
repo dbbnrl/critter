@@ -20,7 +20,7 @@ from PIL import Image
 
 from dataprep import preprocess
 
-img_size = (192, 192)
+img_size = (160, 160)
 trials = 200
 
 ap = argparse.ArgumentParser()

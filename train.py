@@ -21,7 +21,7 @@ np.random.seed(seed)
 classes = ['yes', 'no']
 
 config=[
-    ('data/clearb', 'yes', 0.4),
+    ('data/clear', 'yes', 0.4),
     ('data/nonempty', 'no', 0.4),
     ('data/allin', 'no', 0.2),
     # ('data/empty', 'no', 0.1),
@@ -134,10 +134,10 @@ if args.export_tf:
 if args.train:
     model.fit_generator(
             trainIt,
-            samples_per_epoch=2048,
+            samples_per_epoch=4096,
             nb_epoch=nb_epoch,
             validation_data=testIt,
-            nb_val_samples=256,
+            nb_val_samples=512,
             pickle_safe=True,
             callbacks=[model_checkpoint(model_name)]
                        # TensorBoard(histogram_freq=1, write_graph=False, write_images=True)]

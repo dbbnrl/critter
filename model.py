@@ -99,18 +99,20 @@ def finalmax(model, **kwargs):
     # model = flatten(model)
     return activation(model, 'sigmoid')
 
-def bnorm(model, weight_decay=1E-4, **kwargs):
+reg = l2(1E-5)
+
+def bnorm(model, **kwargs):
     #return model
     return BatchNormalization(mode=0,
-                              gamma_regularizer=l2(weight_decay),
-                              beta_regularizer=l2(weight_decay),
+                              gamma_regularizer=reg,
+                              beta_regularizer=reg,
                               **kwargs)(model)
 
-def dn_conv(model, filters, bias=False, weight_decay=1E-4, **kwargs):
+def dn_conv(model, filters, bias=False, **kwargs):
     return conv(model, filters,
         activation=None, bias=bias,
         #activation=None, bias=True,
-        W_regularizer=l2(weight_decay), **kwargs)
+        W_regularizer=reg, **kwargs)
 
 def dn_convstep(model, filters, bottleneck=None, **kwargs):
     if bottleneck and (bottleneck < model.get_shape()[-1]):
