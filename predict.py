@@ -18,10 +18,15 @@ import time
 import tensorflow as tf
 from PIL import Image
 
-from dataprep import preprocess
+#from dataprep import preprocess
 
 img_size = (160, 160)
 trials = 200
+
+def preprocess(x):
+    x -= 127.5
+    x /= 48.
+    return x
 
 ap = argparse.ArgumentParser()
 ap.add_argument("model")
