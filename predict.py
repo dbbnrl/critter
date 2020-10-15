@@ -25,7 +25,7 @@ trials = 200
 
 def preprocess(x):
     x -= 127.5
-    x /= 48.
+    x /= 48.0
     return x
 
 ap = argparse.ArgumentParser()
